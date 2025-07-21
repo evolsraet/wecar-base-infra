@@ -1,0 +1,20 @@
+# MySQL 데이터 폴더 제외
+mysql_data/
+
+# MacOS 시스템 파일 제외
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE 설정 파일 제외
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 로그 파일 제외
+*.log 
