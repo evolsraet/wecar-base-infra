@@ -12,12 +12,35 @@ services:
       - "${MARIADB_PORT}:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backup/mariadb:/backup:ro
+    entrypoint: >
+      bash -c "
+        echo '-- MariaDB 초기화 스크립트' > /docker-entrypoint-initdb.d/init.sql &&
+        echo '-- wca_prod 스키마 삭제 (존재하는 경우)' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'DROP DATABASE IF EXISTS wca_prod;' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo '-- 기본 사용자 생성 및 권한 부여' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'CREATE USER IF NOT EXISTS \"root\"@\"%\" IDENTIFIED BY \"${MYSQL_ROOT_PASSWORD}\";' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'GRANT ALL PRIVILEGES ON *.* TO \"root\"@\"%\" WITH GRANT OPTION;' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo '-- 기본 데이터베이스 생성' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo '-- 테스트용 사용자 생성' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'CREATE USER IF NOT EXISTS \"${MYSQL_USER}\"@\"%\" IDENTIFIED BY \"${MYSQL_PASSWORD}\";' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO \"${MYSQL_USER}\"@\"%\";' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo '-- 권한 플러시' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'FLUSH PRIVILEGES;' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo '-- 초기화 완료 메시지' >> /docker-entrypoint-initdb.d/init.sql &&
+        echo 'SELECT \"MariaDB initialization completed successfully\" AS message;' >> /docker-entrypoint-initdb.d/init.sql &&
+        docker-entrypoint.sh mariadbd
+      "
     command: >
       --bind-address=0.0.0.0
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
       --max-connections=1000
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --expire-logs-days=30
+      --max-binlog-size=100M
     networks:
       - app-network
     healthcheck:
@@ -50,6 +73,34 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  backup:
+    image: alpine:latest
+    container_name: backup-scheduler
+    restart: unless-stopped
+    volumes:
+      - ./backup/mariadb:/backup
+      - ./_mariadb:/scripts
+      - ./mysql_data:/mysql_data:ro
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - BACKUP_RETENTION_DAYS=7
+      - TZ=Asia/Seoul
+    command: >
+      sh -c "
+        apk add --no-cache mysql-client bash tzdata &&
+        cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime &&
+        echo 'Asia/Seoul' > /etc/timezone &&
+        echo '0 0 * * * /scripts/backup.sh' > /etc/crontabs/root &&
+        crond -f -d 8
+      "
+    networks:
+      - app-network
+    depends_on:
+      - mariadb
 
 volumes:
   redis_data:
