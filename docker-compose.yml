@@ -33,7 +33,7 @@ services:
         docker-entrypoint.sh mariadbd
       "
     command: >
-      --bind-address=0.0.0.0
+      --bind-address=127.0.0.1
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
       --max-connections=1000
@@ -61,7 +61,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --bind 0.0.0.0
+      --bind 127.0.0.1
       --protected-mode no
       --maxmemory ${REDIS_MAXMEMORY}
       --maxmemory-policy ${REDIS_MAXMEMORY_POLICY}
@@ -74,7 +74,7 @@ services:
       timeout: 5s
       retries: 3
 
-  backup:
+  backup-scheduler:
     image: alpine:latest
     container_name: backup-scheduler
     restart: unless-stopped
