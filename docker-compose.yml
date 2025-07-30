@@ -33,7 +33,7 @@ services:
         docker-entrypoint.sh mariadbd
       "
     command: >
-      --bind-address=127.0.0.1
+      --bind-address=0.0.0.0
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
       --max-connections=1000
@@ -41,8 +41,6 @@ services:
       --binlog-format=ROW
       --expire-logs-days=30
       --max-binlog-size=100M
-    networks:
-      - app-network
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       start_period: 10s
@@ -65,8 +63,6 @@ services:
       --protected-mode no
       --maxmemory ${REDIS_MAXMEMORY}
       --maxmemory-policy ${REDIS_MAXMEMORY_POLICY}
-    networks:
-      - app-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       start_period: 10s
@@ -97,8 +93,6 @@ services:
         echo '0 0 * * * /scripts/backup.sh' > /etc/crontabs/root &&
         crond -f -d 8
       "
-    networks:
-      - app-network
     depends_on:
       - mariadb
 
@@ -107,5 +101,5 @@ volumes:
     driver: local
 
 networks:
-  app-network:
+  default:
     driver: bridge 
