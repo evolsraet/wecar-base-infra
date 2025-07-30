@@ -61,7 +61,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --bind 127.0.0.1
+      --bind 0.0.0.0
       --protected-mode no
       --maxmemory ${REDIS_MAXMEMORY}
       --maxmemory-policy ${REDIS_MAXMEMORY_POLICY}
