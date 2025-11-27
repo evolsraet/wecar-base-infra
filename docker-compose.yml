@@ -64,10 +64,11 @@ services:
       --appendonly yes
       --bind 0.0.0.0
       --protected-mode no
+      --requirepass ${REDIS_PASSWORD}
       --maxmemory ${REDIS_MAXMEMORY}
       --maxmemory-policy ${REDIS_MAXMEMORY_POLICY}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       start_period: 10s
       interval: 10s
       timeout: 5s
