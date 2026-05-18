@@ -56,6 +56,16 @@ log "오래된 백업 파일 정리 중..."
 find "$BACKUP_DIR" -name "*.sql" -type f -mtime +$RETENTION_DAYS -delete
 log "정리 완료: $RETENTION_DAYS일 이상 된 백업 파일 삭제됨"
 
+# Binary Log 정리 (MariaDB 자동 만료가 동작하지 않는 환경에 대한 워크어라운드)
+log "Binary log 정리 중 (보존: ${RETENTION_DAYS}일)..."
+mysql -h mariadb -u root -p${MYSQL_ROOT_PASSWORD} -e \
+    "PURGE BINARY LOGS BEFORE DATE_SUB(NOW(), INTERVAL ${RETENTION_DAYS} DAY);"
+if [ $? -eq 0 ]; then
+    log "Binary log 정리 완료"
+else
+    log "오류: Binary log 정리 실패"
+fi
+
 # 백업 완료 로그
 log "백업 완료: $DATE_FORMAT (KST)"
-log "----------------------------------------" 
+log "----------------------------------------"
